@@ -10,6 +10,7 @@
 #
 #   * USER_NAME: container user name (default: default)
 #   * HOME     : container user home directory (default: none)
+#   * DOCKER_USER: user ID to run as (default: 1000)
 #
 # To pass environment variables, you can either use the -e option of the docker run command:
 #
@@ -24,6 +25,25 @@
 #     docker run --rm --env-file env.d/production ashley:latest python manage.py migrate
 #
 
+# If running as root, fix permissions for volume-mounted files before dropping privileges
+if [ "$(id -u)" = "0" ]; then
+  echo "🐳(entrypoint) running as root, fixing permissions for volume-mounted files..."
+
+  # Fix cli.js permissions if it exists and is not executable
+  if [ -f "/app/cli.js" ] && [ ! -x "/app/cli.js" ]; then
+    chmod +x /app/cli.js && echo "🐳(entrypoint) made cli.js executable"
+  fi
+
+  # Determine target user
+  TARGET_USER="${DOCKER_USER:-1000}"
+
+  echo "🐳(entrypoint) dropping privileges to user ${TARGET_USER}..."
+
+  # Use gosu to drop privileges and re-execute this script
+  exec gosu "${TARGET_USER}" "$0" "$@"
+fi
+
+# Now running as unprivileged user
 echo "🐳(entrypoint) creating user running in the container..."
 if ! whoami > /dev/null 2>&1; then
   if [ -w /etc/passwd ]; then
