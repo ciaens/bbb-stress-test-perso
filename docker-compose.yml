@@ -1,0 +1,20 @@
+version: "3.4"
+
+services:
+  app:
+    platform: linux/amd64
+    build:
+      context: .
+      target: development
+    image: bbb-stress-test:development
+    working_dir: /app/
+    user: ${DOCKER_USER:-1000}
+    cap_add:
+      - SYS_ADMIN
+    shm_size: "2gb"
+    security_opt:
+      - seccomp=unconfined
+    env_file:
+      - .env
+    volumes:
+      - .:/app
